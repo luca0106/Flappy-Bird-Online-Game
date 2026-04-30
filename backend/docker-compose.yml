@@ -1,0 +1,35 @@
+services:
+  # Serviciul pentru baza de date MySQL
+  db:
+    image: mysql:8.0
+    container_name: flappy_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD} # Corect: Ia parola din fișierul .env
+      MYSQL_DATABASE: ${DB_NAME}         # Corect: Ia numele bazei de date din .env
+    ports:
+      # Expune portul MySQL pe mașina ta, dacă vrei să te conectezi cu un client extern
+      - "3306:3306"
+    volumes:
+      # Persistă datele bazei de date chiar dacă oprești containerul
+      - mysql_data:/var/lib/mysql
+
+  # Serviciul pentru backend-ul Node.js
+  backend:
+    build: . # Construiește imaginea din folderul curent (unde se află Dockerfile)
+    container_name: flappy_backend
+    restart: always
+    depends_on:
+      - db # Pornește doar după ce serviciul `db` este gata
+    ports:
+      - "3000:3000" # Leagă portul 3000 al containerului de portul 3000 al mașinii tale
+    environment:
+      # Pasează variabilele de mediu către container
+      - DB_HOST=db # Important: host-ul este numele serviciului docker, nu 'localhost'
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+
+volumes:
+  mysql_data:

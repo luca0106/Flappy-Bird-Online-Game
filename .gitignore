@@ -1,0 +1,16 @@
+# Fișier generat de Gemini Code Assist
+# Ignoră fișierele de mediu care conțin secrete și parole
+/backend/.env
+
+# Ignoră folderul cu dependințele Node.js
+/backend/node_modules
+
+# Ignoră datele bazei de date Docker, dacă sunt stocate local
+/backend/mysql_data/
+
+# Ignoră fișierele generate de sistemul de operare
+.DS_Store
+Thumbs.db
+
+# Ignoră setările specifice editorului de cod
+.vscode/
