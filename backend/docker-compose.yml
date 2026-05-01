@@ -25,12 +25,16 @@ services:
     ports:
       - "3000:3000" # Leagă portul 3000 al containerului de portul 3000 al mașinii tale
     environment:
-      # Pasează variabilele de mediu către container
-      - DB_HOST=db # Important: host-ul este numele serviciului docker, nu 'localhost'
+      - DB_HOST=db
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_FROM=${EMAIL_FROM}
 
 volumes:
   mysql_data:

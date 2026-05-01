@@ -502,7 +502,7 @@ const gameState = {
 };
 
 // ===== BACKEND & AUTH STATE =====
-const API_URL = 'http://localhost:3000/api'; // Replace with your actual backend URL
+const API_URL = CONFIG.API_URL;
 let authToken = localStorage.getItem('flappyBirdAuthToken') || null;
 let currentUser = null;
 
