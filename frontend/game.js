@@ -521,21 +521,14 @@ const currentScoreDisplay = document.getElementById('currentScore');
 const countdownOverlay = document.getElementById('countdownOverlay');
 const countdownText = document.getElementById('countdownText');
 const skinSelector = document.getElementById('skinSelector');
-// Auth Modal Elements
-const authModal = document.getElementById('authModal');
-const authButton = document.getElementById('authButton');
-const closeAuthModal = document.getElementById('closeAuthModal');
-const loginView = document.getElementById('loginView');
-const registerView = document.getElementById('registerView');
-const showRegister = document.getElementById('showRegister');
-const showLogin = document.getElementById('showLogin');
-const loginSubmit = document.getElementById('loginSubmit');
-const registerSubmit = document.getElementById('registerSubmit');
-// User Profile Elements
+// Auth/Profile Elements
 const userProfile = document.getElementById('userProfile');
 const guestView = document.getElementById('guestView');
 const welcomeMessage = document.getElementById('welcomeMessage');
 const logoutButton = document.getElementById('logoutButton');
+const loginPageButton = document.getElementById('loginPageButton');
+const localBestScoreDisplay = document.getElementById('localBestScore');
+const leaderboardList = document.getElementById('leaderboardList');
 
 let countdownInterval;
 
@@ -632,6 +625,7 @@ function goToMenu() {
     if (pauseOverlay) pauseOverlay.style.display = 'none';
     renderSkinSelector(); // Refresh skins in case a new score was reached
     updateScoreDisplay(); // Update best score display
+    fetchAndRenderLeaderboard(); // Refresh leaderboard
 }
 
 function showGameOver() {
@@ -675,51 +669,12 @@ function triggerShake(magnitude, duration) {
 
 // ===== BACKEND API FUNCTIONS =====
 
-async function handleLogin() {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    try {
-        const response = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Login failed');
-
-        authToken = data.token;
-        localStorage.setItem('flappyBirdAuthToken', authToken);
-        await fetchUserData();
-        authModal.style.display = 'none';
-    } catch (error) {
-        alert(`Error: ${error.message}`);
-    }
-}
-
-async function handleRegister() {
-    const email = document.getElementById('registerEmail').value;
-    const password = document.getElementById('registerPassword').value;
-    try {
-        const response = await fetch(`${API_URL}/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Registration failed');
-        
-        alert('Registration successful! Please log in.');
-        showLogin.click(); // Switch to login view
-    } catch (error) {
-        alert(`Error: ${error.message}`);
-    }
-}
-
 function handleLogout() {
     authToken = null;
     currentUser = null;
     localStorage.removeItem('flappyBirdAuthToken');
-    gameState.bestScore = 0; // Reset local best score
+    // Reset to guest view without reloading the page
+    gameState.bestScore = localStorage.getItem('flappyBirdBestScore') || 0;
     updateUIAfterLogout();
 }
 
@@ -729,7 +684,10 @@ async function fetchUserData() {
         const response = await fetch(`${API_URL}/user/me`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        if (!response.ok) throw new Error('Could not fetch user data.');
+        if (!response.ok) {
+            // Dacă serverul returnează 401 sau 403, token-ul este invalid
+            throw new Error('Session invalid.');
+        }
         
         const user = await response.json();
         currentUser = user;
@@ -738,6 +696,51 @@ async function fetchUserData() {
     } catch (error) {
         console.error('Session expired or invalid.', error);
         handleLogout();
+    }
+}
+
+async function fetchAndRenderLeaderboard() {
+    if (!leaderboardList) return;
+
+    try {
+        const response = await fetch(`${API_URL}/leaderboard`);
+        if (!response.ok) throw new Error('Failed to fetch leaderboard');
+        const leaderboardData = await response.json();
+
+        leaderboardList.innerHTML = ''; // Clear previous list
+
+        if (leaderboardData.length === 0) {
+            leaderboardList.innerHTML = '<li>Be the first to set a score!</li>';
+            return;
+        }
+
+        leaderboardData.forEach((player, index) => {
+            const li = document.createElement('li');
+            
+            const rank = document.createElement('span');
+            rank.className = 'leaderboard-rank';
+            rank.textContent = `${index + 1}.`;
+
+            const name = document.createElement('span');
+            name.className = 'leaderboard-name';
+            name.textContent = player.username;
+
+            const score = document.createElement('span');
+            score.className = 'leaderboard-score';
+            score.textContent = player.best_score;
+
+            li.appendChild(rank);
+            li.appendChild(name);
+            li.appendChild(score);
+
+            leaderboardList.appendChild(li);
+        });
+
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        if (leaderboardList) {
+            leaderboardList.innerHTML = '<li>Could not load leaderboard.</li>';
+        }
     }
 }
 
@@ -766,7 +769,7 @@ function updateUIAfterLogin() {
     if (currentUser) {
         guestView.style.display = 'none';
         userProfile.style.display = 'flex';
-        welcomeMessage.textContent = `Welcome, ${currentUser.email}!`;
+        welcomeMessage.textContent = `Welcome, ${currentUser.username}!`;
         updateScoreDisplay();
     }
 }
@@ -778,17 +781,29 @@ function updateUIAfterLogout() {
 }
 
 function updateScoreDisplay() {
-    const score = gameState.bestScore || 0;
-    bestScoreDisplay.textContent = score;
-    bestScoreModalDisplay.textContent = score;
+    const currentBest = gameState.bestScore || 0;
+    bestScoreModalDisplay.textContent = currentBest;
+
+    if (currentUser) {
+        // Update score in the logged-in user profile
+        bestScoreDisplay.textContent = currentBest;
+    } else {
+        // Update score in the guest view (local best)
+        localBestScoreDisplay.textContent = currentBest;
+    }
 }
 
 // Check for existing token on page load
 async function checkForExistingSession() {
     if (authToken) {
+        // Dacă există un token, încercăm întotdeauna să îl validăm cu backend-ul.
+        // Backend-ul îl va respinge dacă este expirat sau invalid, iar funcția
+        // fetchUserData va apela handleLogout() pentru a curăța sesiunea.
         await fetchUserData();
     } else {
-        // If no token, use local storage score
+        // Dacă nu există token, configurăm imediat interfața pentru vizitator.
+        guestView.style.display = 'flex';
+        userProfile.style.display = 'none';
         gameState.bestScore = localStorage.getItem('flappyBirdBestScore') || 0;
         updateScoreDisplay();
     }
@@ -806,29 +821,11 @@ restartButton.addEventListener('click', () => {
 });
 menuBackButton.addEventListener('click', goToMenu);
 
-// Auth Modal Listeners
-authButton.addEventListener('click', () => authModal.style.display = 'flex');
-closeAuthModal.addEventListener('click', () => authModal.style.display = 'none');
-showRegister.addEventListener('click', (e) => {
-    e.preventDefault();
-    loginView.style.display = 'none';
-    registerView.style.display = 'flex';
+// Auth Navigation
+loginPageButton.addEventListener('click', () => {
+    window.location.href = 'login.html';
 });
-showLogin.addEventListener('click', (e) => {
-    e.preventDefault();
-    registerView.style.display = 'none';
-    loginView.style.display = 'flex';
-});
-loginSubmit.addEventListener('click', handleLogin);
-registerSubmit.addEventListener('click', handleRegister);
 logoutButton.addEventListener('click', handleLogout);
-
-// Close modal if clicking outside of it
-window.addEventListener('click', (e) => {
-    if (e.target === authModal) {
-        authModal.style.display = 'none';
-    }
-});
 
 document.addEventListener('keydown', (e) => {
     audioController.init();
@@ -1031,9 +1028,20 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Initialize best score display
-checkForExistingSession();
-renderSkinSelector();
+// --- Inițializarea Aplicației ---
+// Folosim o funcție asincronă pentru a ne asigura că totul se încarcă în ordinea corectă,
+// prevenind erorile de tip "race condition".
+async function initializeApp() {
+    // 1. Verifică dacă există o sesiune activă și actualizează interfața. Așteptăm finalizarea.
+    await checkForExistingSession(); 
+    
+    // 2. Acum că știm dacă utilizatorul este logat (și avem scorul corect), încărcăm restul.
+    fetchAndRenderLeaderboard();
+    renderSkinSelector();
 
-// Start the game loop
-gameLoop();
+    // 3. Pornește bucla principală a jocului.
+    gameLoop();
+}
+
+// Rulează aplicația
+initializeApp();

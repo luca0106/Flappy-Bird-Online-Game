@@ -5,12 +5,13 @@ services:
     container_name: flappy_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD} # Corect: Ia parola din fișierul .env
-      MYSQL_DATABASE: ${DB_NAME}         # Corect: Ia numele bazei de date din .env
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD} # Ia parola din fișierul .env
+      MYSQL_DATABASE: ${DB_NAME}         # Ia numele bazei de date din .env
     ports:
-      # Expune portul MySQL pe mașina ta, dacă vrei să te conectezi cu un client extern
       - "3306:3306"
     volumes:
+      # Montează scriptul de inițializare pentru a fi rulat la prima pornire
+      - ./database.sql:/docker-entrypoint-initdb.d/init.sql
       # Persistă datele bazei de date chiar dacă oprești containerul
       - mysql_data:/var/lib/mysql
 

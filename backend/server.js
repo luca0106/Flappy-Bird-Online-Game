@@ -39,7 +39,8 @@ const authenticateToken = (req, res, next) => {
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
-            return res.sendStatus(403); // Forbidden
+            // Tokenul este invalid sau a expirat
+            return res.sendStatus(401); // Unauthorized
         }
         req.user = user;
         next();
@@ -52,10 +53,10 @@ const authenticateToken = (req, res, next) => {
 // Endpoint pentru înregistrarea unui utilizator nou
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, username } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ message: 'Email and password are required.' });
+        if (!email || !password || !username) {
+            return res.status(400).json({ message: 'Username, email and password are required.' });
         }
 
         // Criptarea parolei
@@ -64,14 +65,17 @@ app.post('/api/auth/register', async (req, res) => {
 
         // Inserarea în baza de date
         const [result] = await pool.query(
-            'INSERT INTO users (email, password_hash) VALUES (?, ?)',
-            [email, passwordHash]
+            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+            [username, email, passwordHash]
         );
 
         res.status(201).json({ message: 'User registered successfully!', userId: result.insertId });
     } catch (error) {
         // Verifică dacă eroarea este din cauza unui email duplicat
         if (error.code === 'ER_DUP_ENTRY') {
+            if (error.message.includes('username')) {
+                return res.status(409).json({ message: 'Username already exists.' });
+            }
             return res.status(409).json({ message: 'Email already exists.' });
         }
         console.error('Registration error:', error);
@@ -111,7 +115,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Endpoint pentru a obține datele utilizatorului logat (protejat)
 app.get('/api/user/me', authenticateToken, async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT id, email, best_score FROM users WHERE id = ?', [req.user.id]);
+        const [rows] = await pool.query('SELECT id, username, email, best_score FROM users WHERE id = ?', [req.user.id]);
         if (!rows[0]) {
             return res.status(404).json({ message: 'User not found.' });
         }
@@ -141,6 +145,19 @@ app.post('/api/scores', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Score submission error:', error);
         res.status(500).json({ message: 'Server error while submitting score.' });
+    }
+});
+
+// Endpoint pentru a obține clasamentul global (leaderboard)
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT username, best_score FROM users ORDER BY best_score DESC LIMIT 10'
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('Leaderboard fetch error:', error);
+        res.status(500).json({ message: 'Server error while fetching leaderboard.' });
     }
 });
 

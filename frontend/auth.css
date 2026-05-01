@@ -1,0 +1,229 @@
+:root {
+    --primary-color: #00d4ff;
+    --secondary-color: #ff006e;
+    --accent-color: #ffd60a;
+    --dark-bg: #0a0e27;
+    --card-bg: rgba(255, 255, 255, 0.08);
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --glow-blue: 0 0 20px rgba(0, 212, 255, 0.5);
+    --glow-pink: 0 0 20px rgba(255, 0, 110, 0.5);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --input-bg: rgba(0, 0, 0, 0.2);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    background: linear-gradient(135deg, #0a0e27 0%, #16213e 50%, #0f3460 100%);
+    background-attachment: fixed;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.background-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 0, 110, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 1;
+    animation: gradientShift 8s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.auth-container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-content {
+    backdrop-filter: blur(15px);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    padding: 40px;
+    text-align: center;
+    max-width: 450px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.logo-container {
+    margin-bottom: 30px;
+}
+
+.logo-bird {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #ffd60a, #ff006e);
+    border-radius: 50%;
+    position: relative;
+    box-shadow: var(--glow-pink);
+}
+
+.game-title {
+    font-size: 2.5em;
+    font-weight: 900;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #00d4ff, #ffd60a, #ff006e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-transform: uppercase;
+}
+
+.form-toggle {
+    display: flex;
+    margin-bottom: 25px;
+    background: var(--input-bg);
+    border-radius: 10px;
+    padding: 4px;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    border-radius: 8px;
+    font-size: 1em;
+}
+
+.toggle-btn.active {
+    background: var(--primary-color);
+    color: var(--dark-bg);
+    box-shadow: var(--glow-blue);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-form h3 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 15px;
+    font-size: 1em;
+    border-radius: 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    transition: var(--transition-smooth);
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: var(--glow-blue);
+}
+
+.auth-form button[type="submit"] {
+    width: 100%;
+    padding: 15px;
+    font-size: 1em;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary-color), #00d4ff);
+    color: var(--dark-bg);
+    border: none;
+    font-weight: 900;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: var(--glow-blue);
+    margin-top: 10px;
+}
+
+.auth-form button[type="submit"]:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--glow-blue), 0 5px 20px rgba(0, 212, 255, 0.4);
+}
+
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input {
+    padding-right: 45px;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 1px;
+    top: 1px;
+    bottom: 1px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0 15px;
+    font-size: 1.2em;
+    border-radius: 8px;
+}
+
+.password-toggle:hover {
+    color: var(--text-primary);
+}
+
+.back-to-game {
+    margin-top: 30px;
+}
+
+.back-to-game a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition-smooth);
+}
+
+.back-to-game a:hover {
+    color: var(--primary-color);
+}
