@@ -17,7 +17,9 @@ const app = express();
 app.use(helmet());
 
 // Middleware-uri
-app.use(cors());
+app.use(cors({
+    origin: ['https://flappy-bird-online-game.vercel.app', 'http://localhost:5500', 'http://127.0.0.1:5500'],
+}));
 app.use(express.json());
 
 // Rate limiting
@@ -268,7 +270,6 @@ app.get('/api/leaderboard', async (req, res) => {
 
 // --- Pornirea Serverului ---
 const PORT = process.env.PORT || 3000;
-console.log(`DB config: host=${process.env.DB_HOST}, port=${process.env.DB_PORT}, db=${process.env.DB_NAME}`);
 
 app.listen(PORT, async () => {
     try {
