@@ -268,6 +268,7 @@ app.get('/api/leaderboard', async (req, res) => {
 
 // --- Pornirea Serverului ---
 const PORT = process.env.PORT || 3000;
+console.log(`DB config: host=${process.env.DB_HOST}, port=${process.env.DB_PORT}, db=${process.env.DB_NAME}`);
 
 app.listen(PORT, async () => {
     try {
