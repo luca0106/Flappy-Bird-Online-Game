@@ -1,19 +1,41 @@
 // Importarea modulelor necesare
 const express = require('express');
-const mysql = require('mysql2/promise'); // Folosim varianta cu Promises pentru async/await
+const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-require('dotenv').config(); // Încarcă variabilele de mediu din fișierul .env
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+require('dotenv').config();
 
 // Inițializarea aplicației Express
 const app = express();
 
+// Security headers
+app.use(helmet());
+
 // Middleware-uri
-app.use(cors()); // Permite cereri Cross-Origin (de la frontend la backend)
-app.use(express.json()); // Permite serverului să înțeleagă JSON-ul trimis în corpul cererilor
+app.use(cors());
+app.use(express.json());
+
+// Rate limiting
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minute
+    max: 10, // max 10 cereri per IP per fereastra
+    message: { message: 'Too many attempts. Please try again in 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const codeLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 ora
+    max: 5, // max 5 emailuri per IP pe ora
+    message: { message: 'Too many verification code requests. Please try again in an hour.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 // Configurația pentru conexiunea la baza de date
 const dbConfig = {
@@ -74,7 +96,7 @@ const authenticateToken = (req, res, next) => {
 // --- ENDPOINTS API (Rute) ---
 
 // Endpoint pentru a cere un cod de verificare pe email
-app.post('/api/auth/request-code', async (req, res) => {
+app.post('/api/auth/request-code', codeLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) {
         return res.status(400).json({ message: 'Email is required.' });
@@ -114,12 +136,20 @@ app.post('/api/auth/request-code', async (req, res) => {
 });
 
 // Endpoint pentru înregistrarea unui utilizator nou
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
         const { email, password, username, verificationCode } = req.body;
 
         if (!email || !password || !username || !verificationCode) {
             return res.status(400).json({ message: 'All fields, including verification code, are required.' });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+        }
+
+        if (username.length < 3 || username.length > 50) {
+            return res.status(400).json({ message: 'Username must be between 3 and 50 characters.' });
         }
 
         // Verifică codul
@@ -154,7 +184,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Endpoint pentru login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -234,24 +264,6 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
-
-// Endpoint temporar pentru testarea emailului
-app.get('/api/test-email', async (req, res) => {
-    try {
-        const info = await transporter.sendMail({
-            from: process.env.EMAIL_FROM,
-            to: process.env.EMAIL_USER,
-            subject: 'Test email Flappy Bird',
-            text: 'Daca primesti asta, emailul functioneaza!',
-        });
-        console.log('EMAIL SMTP response:', info.response);
-        console.log('EMAIL messageId:', info.messageId);
-        res.json({ message: 'Email trimis!', smtpResponse: info.response, messageId: info.messageId });
-    } catch (error) {
-        console.error('EMAIL ERROR:', error.message);
-        res.status(500).json({ message: error.message });
-    }
-});
 
 // --- Pornirea Serverului ---
 const PORT = process.env.PORT || 3000;
