@@ -12,6 +12,35 @@
     <div class="main-container">
         <!-- Start Screen -->
         <div class="start-screen" id="startScreen">
+            <!-- Auth/Profile Container - Top Right -->
+            <div class="stats-container">
+                <!-- Logged In View -->
+                <div class="user-profile" id="userProfile" style="display: none;">
+                    <span id="welcomeMessage"></span>
+                    <div class="profile-stat">
+                        <span class="stat-label">Best Score</span>
+                        <span class="stat-value" id="bestScore">0</span>
+                    </div>
+                    <button id="logoutButton" class="auth-button">Logout</button>
+                </div>
+                <!-- Guest View -->
+                <div class="guest-view" id="guestView">
+                    <div class="stat-box">
+                        <span class="stat-label">Local Best</span>
+                        <span class="stat-value" id="localBestScore">0</span>
+                    </div>
+                    <button class="auth-button" id="loginPageButton">Login / Register</button>
+                </div>
+            </div>
+
+            <!-- Global Leaderboard - Top Left -->
+            <div class="leaderboard-container">
+                <h3 class="leaderboard-title">GLOBAL LEADERBOARD</h3>
+                <ol class="leaderboard-list" id="leaderboardList">
+                    <!-- Leaderboard data will be injected here by JS -->
+                </ol>
+            </div>
+
             <div class="start-content">
                 <div class="logo-container">
                     <div class="logo-bird"></div>
@@ -19,38 +48,10 @@
                     <p class="subtitle">2026 Edition</p>
                 </div>
                 
-                <div class="stats-container">
-                    <!-- Logged In View -->
-                    <div class="user-profile" id="userProfile" style="display: none;">
-                        <span id="welcomeMessage"></span>
-                        <div class="profile-stat">
-                            <span class="stat-label">Best Score</span>
-                            <span class="stat-value" id="bestScore">0</span>
-                        </div>
-                        <button id="logoutButton" class="auth-button">Logout</button>
-                    </div>
-                    <!-- Guest View -->
-                    <div class="guest-view" id="guestView">
-                        <div class="stat-box">
-                            <span class="stat-label">Local Best</span>
-                            <span class="stat-value" id="localBestScore">0</span>
-                        </div>
-                        <button class="auth-button" id="loginPageButton">Login / Register</button>
-                    </div>
-                </div>
-
                 <button class="start-button" id="startButton">
                     <span class="button-text">START GAME</span>
                     <span class="button-glow"></span>
                 </button>
-                
-                <!-- Global Leaderboard -->
-                <div class="leaderboard-container">
-                    <h3 class="leaderboard-title">GLOBAL LEADERBOARD</h3>
-                    <ol class="leaderboard-list" id="leaderboardList">
-                        <!-- Leaderboard data will be injected here by JS -->
-                    </ol>
-                </div>
                 
                 <div class="skin-selector-container">
                     <p class="skin-title">BIRD SKINS</p>
