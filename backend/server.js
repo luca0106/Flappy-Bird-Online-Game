@@ -32,7 +32,7 @@ const authLimiter = rateLimit({
 
 const codeLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 ora
-    max: 5, // max 5 emailuri per IP pe ora
+    max: 20, // max 20 emailuri per IP pe ora
     message: { message: 'Too many verification code requests. Please try again in an hour.' },
     standardHeaders: true,
     legacyHeaders: false,
