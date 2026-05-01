@@ -875,7 +875,8 @@ function update() {
     const currentSpacing = Math.max(250, PIPE_SPACING - (gameState.difficulty - 1) * 40);
     const lastPipe = gameState.pipes.length > 0 ? gameState.pipes[gameState.pipes.length - 1] : null;
     if (!lastPipe || (canvas.width - lastPipe.x) > currentSpacing) {
-        const newPipe = new Pipe(canvas.width, canvas.height);
+        const spawnX = !lastPipe ? Math.floor(canvas.width * 0.6) : canvas.width;
+        const newPipe = new Pipe(spawnX, canvas.height);
         gameState.pipes.push(newPipe);
 
         gameState.lastPipeX = canvas.width; // Keep for backward compatibility of state object
