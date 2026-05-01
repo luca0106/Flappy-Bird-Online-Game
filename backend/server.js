@@ -56,6 +56,16 @@ const pool = mysql.createPool(dbConfig);
 
 async function ensureDatabaseSchema() {
     await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(50) NOT NULL UNIQUE,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            best_score INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS email_verification (
             email VARCHAR(255) NOT NULL PRIMARY KEY,
             code VARCHAR(6) NOT NULL,
