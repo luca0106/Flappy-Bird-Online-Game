@@ -5,11 +5,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const showRegisterBtn = document.getElementById('showRegisterBtn');
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
+    const sendCodeBtn = document.getElementById('sendCodeBtn');
+    const registerStep1 = document.getElementById('registerStep1');
+    const registerStep2 = document.getElementById('registerStep2');
+    const sentToEmailDisplay = document.getElementById('sentToEmail');
+
+    function resetRegisterFlow() {
+        registerForm.reset();
+        registerStep1.style.display = 'block';
+        registerStep2.style.display = 'none';
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.textContent = 'Send Verification Code';
+        sentToEmailDisplay.textContent = '';
+    }
 
     // --- Form Toggle Logic ---
     showLoginBtn.addEventListener('click', () => {
         loginForm.style.display = 'flex';
         registerForm.style.display = 'none';
+        resetRegisterFlow();
         showLoginBtn.classList.add('active');
         showRegisterBtn.classList.remove('active');
     });
@@ -17,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showRegisterBtn.addEventListener('click', () => {
         loginForm.style.display = 'none';
         registerForm.style.display = 'flex';
+        resetRegisterFlow();
         showLoginBtn.classList.remove('active');
         showRegisterBtn.classList.add('active');
     });
@@ -59,24 +74,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function handleRegister(event) {
-        event.preventDefault();
-        const username = document.getElementById('registerUsername').value;
+    async function requestVerificationCode() {
         const email = document.getElementById('registerEmail').value;
+        if (!email) {
+            alert('Please enter a valid email address.');
+            return;
+        }
+
+        sendCodeBtn.disabled = true;
+        sendCodeBtn.textContent = 'Sending...';
+
+        try {
+            const response = await fetch(`${API_URL}/auth/request-code`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+
+            alert('A verification code has been sent to your email.');
+            sentToEmailDisplay.textContent = email;
+            registerStep1.style.display = 'none';
+            registerStep2.style.display = 'block';
+
+        } catch (error) {
+            alert(`Error: ${error.message}`);
+            sendCodeBtn.disabled = false;
+            sendCodeBtn.textContent = 'Send Verification Code';
+        }
+    }
+
+    async function completeRegistration(event) {
+        event.preventDefault();
+        const email = document.getElementById('registerEmail').value;
+        const verificationCode = document.getElementById('verificationCode').value;
+        const username = document.getElementById('registerUsername').value;
         const password = document.getElementById('registerPassword').value;
         try {
             const response = await fetch(`${API_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, email, password })
+                body: JSON.stringify({ email, verificationCode, username, password })
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Registration failed');
             
             alert('Registration successful! Please log in.');
-            showLoginBtn.click(); // Switch to login view
-            // Clear register form for good practice
-            registerForm.reset();
+            showLoginBtn.click(); // Switch to login view and reset the register flow
 
         } catch (error) {
             alert(`Registration Error: ${error.message}`);
@@ -84,5 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loginForm.addEventListener('submit', handleLogin);
-    registerForm.addEventListener('submit', handleRegister);
+    sendCodeBtn.addEventListener('click', requestVerificationCode);
+    registerForm.addEventListener('submit', completeRegistration);
 });
+

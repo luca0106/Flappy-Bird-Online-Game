@@ -147,6 +147,12 @@ body {
     color: var(--text-primary);
 }
 
+.auth-form #registerStep1 button,
+.auth-form #registerStep2 button[type="submit"] {
+    width: 100%;
+    margin-top: 10px;
+}
+
 .auth-form input {
     width: 100%;
     padding: 15px;
@@ -164,7 +170,7 @@ body {
     box-shadow: var(--glow-blue);
 }
 
-.auth-form button[type="submit"] {
+.auth-form button:not(.password-toggle) {
     width: 100%;
     padding: 15px;
     font-size: 1em;
@@ -178,10 +184,9 @@ body {
     text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: var(--glow-blue);
-    margin-top: 10px;
 }
 
-.auth-form button[type="submit"]:hover {
+.auth-form button:not(.password-toggle):hover {
     transform: translateY(-2px);
     box-shadow: var(--glow-blue), 0 5px 20px rgba(0, 212, 255, 0.4);
 }
@@ -212,6 +217,12 @@ body {
 
 .password-toggle:hover {
     color: var(--text-primary);
+}
+
+.verification-info {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
 }
 
 .back-to-game {

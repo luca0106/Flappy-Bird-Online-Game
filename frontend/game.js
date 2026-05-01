@@ -691,7 +691,7 @@ async function fetchUserData() {
         
         const user = await response.json();
         currentUser = user;
-        gameState.bestScore = user.bestScore || 0;
+        gameState.bestScore = user.bestScore ?? user.best_score ?? 0;
         updateUIAfterLogin();
     } catch (error) {
         console.error('Session expired or invalid.', error);

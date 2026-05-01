@@ -4,6 +4,8 @@ const mysql = require('mysql2/promise'); // Folosim varianta cu Promises pentru 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 require('dotenv').config(); // Încarcă variabilele de mediu din fișierul .env
 
 // Inițializarea aplicației Express
@@ -26,6 +28,27 @@ const dbConfig = {
 
 // Crearea unui pool de conexiuni la baza de date
 const pool = mysql.createPool(dbConfig);
+
+async function ensureDatabaseSchema() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS email_verification (
+            email VARCHAR(255) NOT NULL PRIMARY KEY,
+            code VARCHAR(6) NOT NULL,
+            expires_at TIMESTAMP NOT NULL
+        )
+    `);
+}
+
+// Configurația pentru Nodemailer (trimitere email-uri)
+const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: parseInt(process.env.EMAIL_PORT),
+    secure: process.env.EMAIL_PORT == 465,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+});
 
 // --- Middleware pentru Autentificare ---
 // Verifică dacă un token JWT este valid
@@ -50,33 +73,80 @@ const authenticateToken = (req, res, next) => {
 
 // --- ENDPOINTS API (Rute) ---
 
+// Endpoint pentru a cere un cod de verificare pe email
+app.post('/api/auth/request-code', async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ message: 'Email is required.' });
+    }
+
+    try {
+        // Verifică dacă email-ul este deja înregistrat
+        const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+        if (users.length > 0) {
+            return res.status(409).json({ message: 'An account with this email already exists.' });
+        }
+
+        const code = crypto.randomInt(100000, 1000000).toString(); // Generează un cod de 6 cifre
+        const expires_at = new Date(Date.now() + 10 * 60 * 1000); // Valabil 10 minute
+
+        // Salvează codul în baza de date (sau îl actualizează dacă există deja)
+        await pool.query(
+            'INSERT INTO email_verification (email, code, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE code = ?, expires_at = ?',
+            [email, code, expires_at, code, expires_at]
+        );
+
+        // Trimite email-ul
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM,
+            to: email,
+            subject: 'Your Flappy Bird Verification Code',
+            text: `Your verification code is: ${code}`,
+            html: `<p>Your verification code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`,
+        });
+
+        res.status(200).json({ message: 'Verification code sent successfully.' });
+
+    } catch (error) {
+        console.error('Error sending verification code:', error);
+        res.status(500).json({ message: 'Failed to send verification code.' });
+    }
+});
+
 // Endpoint pentru înregistrarea unui utilizator nou
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, username } = req.body;
+        const { email, password, username, verificationCode } = req.body;
 
-        if (!email || !password || !username) {
-            return res.status(400).json({ message: 'Username, email and password are required.' });
+        if (!email || !password || !username || !verificationCode) {
+            return res.status(400).json({ message: 'All fields, including verification code, are required.' });
         }
 
-        // Criptarea parolei
+        // Verifică codul
+        const [rows] = await pool.query('SELECT * FROM email_verification WHERE email = ?', [email]);
+        const verificationData = rows[0];
+
+        if (!verificationData || verificationData.code !== verificationCode || new Date() > new Date(verificationData.expires_at)) {
+            return res.status(400).json({ message: 'Invalid or expired verification code.' });
+        }
+
+        // Dacă codul este valid, continuă cu înregistrarea
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // Inserarea în baza de date
         const [result] = await pool.query(
             'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
             [username, email, passwordHash]
         );
 
+        // Șterge codul de verificare după utilizare
+        await pool.query('DELETE FROM email_verification WHERE email = ?', [email]);
+
         res.status(201).json({ message: 'User registered successfully!', userId: result.insertId });
+
     } catch (error) {
-        // Verifică dacă eroarea este din cauza unui email duplicat
         if (error.code === 'ER_DUP_ENTRY') {
-            if (error.message.includes('username')) {
-                return res.status(409).json({ message: 'Username already exists.' });
-            }
-            return res.status(409).json({ message: 'Email already exists.' });
+            return res.status(409).json({ message: 'Username or email already exists.' });
         }
         console.error('Registration error:', error);
         res.status(500).json({ message: 'Server error during registration.' });
@@ -101,7 +171,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Crearea token-ului JWT
-        const payload = { id: user.id, email: user.email };
+        const payload = { id: user.id }; // Trimitem doar ID-ul, este suficient pentru a identifica utilizatorul.
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' }); // Token valabil 1 zi
 
         res.json({ token });
@@ -115,7 +185,10 @@ app.post('/api/auth/login', async (req, res) => {
 // Endpoint pentru a obține datele utilizatorului logat (protejat)
 app.get('/api/user/me', authenticateToken, async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT id, username, email, best_score FROM users WHERE id = ?', [req.user.id]);
+        const [rows] = await pool.query(
+            'SELECT id, username, email, best_score AS bestScore FROM users WHERE id = ?',
+            [req.user.id]
+        );
         if (!rows[0]) {
             return res.status(404).json({ message: 'User not found.' });
         }
@@ -162,11 +235,30 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 
+// Endpoint temporar pentru testarea emailului
+app.get('/api/test-email', async (req, res) => {
+    try {
+        const info = await transporter.sendMail({
+            from: process.env.EMAIL_FROM,
+            to: process.env.EMAIL_USER,
+            subject: 'Test email Flappy Bird',
+            text: 'Daca primesti asta, emailul functioneaza!',
+        });
+        console.log('EMAIL SMTP response:', info.response);
+        console.log('EMAIL messageId:', info.messageId);
+        res.json({ message: 'Email trimis!', smtpResponse: info.response, messageId: info.messageId });
+    } catch (error) {
+        console.error('EMAIL ERROR:', error.message);
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // --- Pornirea Serverului ---
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, async () => {
     try {
+        await ensureDatabaseSchema();
         // Testează conexiunea la baza de date la pornire
         const connection = await pool.getConnection();
         console.log('Successfully connected to the database.');

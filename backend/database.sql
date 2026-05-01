@@ -9,3 +9,10 @@ CREATE TABLE IF NOT EXISTS users (
     best_score INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Tabelă pentru stocarea temporară a codurilor de verificare
+CREATE TABLE IF NOT EXISTS email_verification (
+    email VARCHAR(255) NOT NULL PRIMARY KEY,
+    code VARCHAR(6) NOT NULL,
+    expires_at TIMESTAMP NOT NULL
+);
