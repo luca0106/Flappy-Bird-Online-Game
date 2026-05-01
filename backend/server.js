@@ -4,7 +4,6 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -74,16 +73,25 @@ async function ensureDatabaseSchema() {
     `);
 }
 
-// Configurația pentru Nodemailer (trimitere email-uri)
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT),
-    secure: process.env.EMAIL_PORT == 465,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+async function sendEmail(to, subject, html) {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'api-key': process.env.BREVO_API_KEY,
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+            sender: { name: 'Flappy Bird', email: process.env.EMAIL_USER },
+            to: [{ email: to }],
+            subject,
+            htmlContent: html,
+        }),
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Brevo API error');
+    }
+}
 
 // --- Middleware pentru Autentificare ---
 // Verifică dacă un token JWT este valid
@@ -132,13 +140,11 @@ app.post('/api/auth/request-code', codeLimiter, async (req, res) => {
         );
 
         // Trimite email-ul
-        await transporter.sendMail({
-            from: process.env.EMAIL_FROM,
-            to: email,
-            subject: 'Your Flappy Bird Verification Code',
-            text: `Your verification code is: ${code}`,
-            html: `<p>Your verification code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`,
-        });
+        await sendEmail(
+            email,
+            'Your Flappy Bird Verification Code',
+            `<p>Your verification code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`
+        );
 
         res.status(200).json({ message: 'Verification code sent successfully.' });
 
