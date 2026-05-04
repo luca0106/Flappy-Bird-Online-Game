@@ -13,6 +13,39 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const isMobile = window.matchMedia('(pointer: coarse)').matches;
 
+// Returns game parameters scaled to the current canvas size.
+// On desktop everything is unchanged; on mobile values are tuned for narrow screens.
+function getGameParams() {
+    if (!isMobile) {
+        return {
+            pipeWidth:      PIPE_WIDTH,
+            pipeGap:        PIPE_GAP,
+            minPipeGap:     120,
+            pipeSpacing:    PIPE_SPACING,
+            minPipeSpacing: 250,
+            birdSize:       BIRD_SIZE,
+            baseSpeed:      4.75,
+            speedIncrease:  1.2,
+            gapReduction:   8,
+            firstPipeX:     canvas.width * 0.6,
+        };
+    }
+    const w = canvas.width;
+    const h = canvas.height;
+    return {
+        pipeWidth:      Math.round(w * 0.14),
+        pipeGap:        Math.round(h * 0.24),
+        minPipeGap:     Math.round(h * 0.18),
+        pipeSpacing:    Math.round(w * 1.1),
+        minPipeSpacing: Math.round(w * 0.7),
+        birdSize:       Math.round(Math.min(w * 0.065, BIRD_SIZE)),
+        baseSpeed:      2.5,
+        speedIncrease:  0.6,
+        gapReduction:   5,
+        firstPipeX:     canvas.width,   // start fully off-screen on mobile
+    };
+}
+
 // Responsive canvas sizing
 function resizeCanvas() {
     const gameScreen = document.getElementById('gameScreen');
@@ -121,6 +154,9 @@ const bird = {
     trail: [],
 
     init(canvasHeight) {
+        const { birdSize } = getGameParams();
+        this.width = birdSize;
+        this.height = birdSize;
         this.x = canvas.width * 0.12;
         this.y = canvasHeight / 2;
         this.velocityY = 0;
@@ -235,11 +271,11 @@ const bird = {
 // ===== PIPE OBJECT =====
 class Pipe {
     constructor(x, canvasHeight) {
+        const params = getGameParams();
         this.x = x;
-        this.width = PIPE_WIDTH;
-        // Gap decreases with difficulty
-        const gapReduction = (gameState.difficulty - 1) * 8;
-        this.gap = Math.max(120, PIPE_GAP - gapReduction);
+        this.width = params.pipeWidth;
+        const gapReduction = (gameState.difficulty - 1) * params.gapReduction;
+        this.gap = Math.max(params.minPipeGap, params.pipeGap - gapReduction);
         const minGap = 60;
         const maxGap = canvasHeight - this.gap - 60;
         this.gapY = Math.random() * (maxGap - minGap) + minGap;
@@ -264,10 +300,8 @@ class Pipe {
     }
 
     update() {
-        // Speed increases significantly with difficulty
-        const baseSpeed = 4.75;
-        const speedIncrease = (gameState.difficulty - 1) * 1.2;
-        this.x -= (baseSpeed + speedIncrease);
+        const { baseSpeed, speedIncrease: inc } = getGameParams();
+        this.x -= (baseSpeed + (gameState.difficulty - 1) * inc);
 
         if (this.isMoving) {
             this.gapY += this.moveDirection * this.moveSpeed;
@@ -934,10 +968,11 @@ function update() {
     }
 
     // Generate pipes - based on horizontal spacing
-    const currentSpacing = Math.max(250, PIPE_SPACING - (gameState.difficulty - 1) * 40);
+    const { pipeSpacing, minPipeSpacing, firstPipeX } = getGameParams();
+    const currentSpacing = Math.max(minPipeSpacing, pipeSpacing - (gameState.difficulty - 1) * 40);
     const lastPipe = gameState.pipes.length > 0 ? gameState.pipes[gameState.pipes.length - 1] : null;
     if (!lastPipe || (canvas.width - lastPipe.x) > currentSpacing) {
-        const spawnX = !lastPipe ? Math.floor(canvas.width * 0.6) : canvas.width;
+        const spawnX = !lastPipe ? Math.floor(firstPipeX) : canvas.width;
         const newPipe = new Pipe(spawnX, canvas.height);
         gameState.pipes.push(newPipe);
 
