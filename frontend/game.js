@@ -874,13 +874,12 @@ if (isMobile) {
             if (navigator.vibrate) navigator.vibrate(15);
         } else if (gameState.gameActive && gameState.gameOver) {
             restart();
-        } else if (gameState.gameActive && gameState.paused) {
-            togglePause();
         }
     }, { passive: false });
 
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
+    // Pause button (⏸) — pauses the game
     const pauseButton = document.getElementById('pauseButton');
     if (pauseButton) {
         pauseButton.addEventListener('touchstart', (e) => {
@@ -889,6 +888,28 @@ if (isMobile) {
             if (gameState.gameActive && !gameState.gameOver && !gameState.countingDown) {
                 togglePause();
             }
+        }, { passive: false });
+    }
+
+    // Pause overlay — tap anywhere to resume, except on the menu button
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    if (pauseOverlay) {
+        pauseOverlay.addEventListener('touchstart', (e) => {
+            if (e.target.closest('#pauseMenuButton')) return;
+            e.preventDefault();
+            if (gameState.gameActive && gameState.paused) {
+                togglePause();
+            }
+        }, { passive: false });
+    }
+
+    // "Main Menu" button inside pause overlay
+    const pauseMenuButton = document.getElementById('pauseMenuButton');
+    if (pauseMenuButton) {
+        pauseMenuButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            goToMenu();
         }, { passive: false });
     }
 }

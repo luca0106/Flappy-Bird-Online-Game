@@ -894,8 +894,9 @@ body {
 }
 
 /* Controls/pause text: mobile variants hidden on desktop */
-.controls-mobile  { display: none; }
+.controls-mobile   { display: none; }
 .pause-hint-mobile { display: none; }
+.pause-menu-btn    { display: none; }
 
 /* ===== TOUCH DEVICE LAYOUT (pointer: coarse = touchscreen) ===== */
 @media (pointer: coarse) {
@@ -1059,10 +1060,32 @@ body {
         transform: scale(0.92);
     }
 
-    /* Push menu button left so it doesn't overlap the pause button */
+    /* Hide the in-game menu button — accidental tap risk on mobile */
     .menu-button {
-        top: max(15px, env(safe-area-inset-top));
-        right: max(75px, calc(env(safe-area-inset-right) + 75px));
+        display: none;
+    }
+
+    /* "Main Menu" button inside pause overlay — mobile only */
+    .pause-menu-btn {
+        display: block;
+        margin-top: 24px;
+        padding: 14px 36px;
+        background: transparent;
+        color: var(--text-secondary);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        font-size: 0.95em;
+        font-weight: 700;
+        letter-spacing: 1px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        transition: background 0.2s, border-color 0.2s;
+    }
+
+    .pause-menu-btn:active {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.4);
     }
 
     /* Pause overlay text */
