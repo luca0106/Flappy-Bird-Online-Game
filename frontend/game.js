@@ -545,6 +545,27 @@ const API_URL = CONFIG.API_URL;
 let authToken = localStorage.getItem('flappyBirdAuthToken') || null;
 let currentUser = null;
 
+// Holds the in-flight promise for the current game session token.
+// Awaited by submitScore() so the session is always ready before the score is sent.
+let sessionIdPromise = null;
+
+async function startGameSession() {
+    if (!authToken) { sessionIdPromise = Promise.resolve(null); return; }
+    sessionIdPromise = (async () => {
+        try {
+            const res = await fetch(`${API_URL}/game/start`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}` },
+            });
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.sessionId || null;
+        } catch {
+            return null;
+        }
+    })();
+}
+
 // ===== DOM ELEMENTS =====
 const startScreen = document.getElementById('startScreen');
 const gameScreen = document.getElementById('gameScreen');
@@ -646,6 +667,7 @@ function startCountdown() {
 function startGame() {
     startScreen.style.display = 'none';
     gameScreen.style.display = 'flex';
+    startGameSession();
     initGame();
     startCountdown();
 }
@@ -687,6 +709,7 @@ function showGameOver() {
 }
 
 function restart() {
+    startGameSession();
     initGame();
     gameOverModal.style.display = 'none';
     gameState.gameActive = true;
@@ -797,13 +820,14 @@ async function fetchAndRenderLeaderboard() {
 async function submitScore(score) {
     if (!authToken) return;
     try {
+        const sessionId = await sessionIdPromise;
         const response = await fetch(`${API_URL}/scores`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ score })
+            body: JSON.stringify({ score, sessionId })
         });
         const data = await response.json();
         if (response.ok && data.newBestScore !== undefined) {

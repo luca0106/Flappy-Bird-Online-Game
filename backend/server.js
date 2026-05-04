@@ -67,6 +67,23 @@ const dbConfig = {
 // Crearea unui pool de conexiuni la baza de date
 const pool = mysql.createPool(dbConfig);
 
+// ── Game session store (in-memory, intentionally ephemeral) ──────────────────
+// Each entry: { userId, startTime, used }
+const gameSessions = new Map();
+
+// Purge sessions older than 30 minutes every 10 minutes
+setInterval(() => {
+    const cutoff = Date.now() - 30 * 60 * 1000;
+    for (const [id, s] of gameSessions) {
+        if (s.startTime < cutoff) gameSessions.delete(id);
+    }
+}, 10 * 60 * 1000);
+
+// Minimum real-world seconds needed per point scored.
+// Desktop: pipe spacing ~500px at 4.75px/frame × 60fps ≈ 1.75s/point.
+// We use 1.2s as a conservative lower bound that still catches instant fakes.
+const MIN_SECONDS_PER_POINT = 1.2;
+
 async function ensureDatabaseSchema() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
@@ -283,15 +300,54 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
     }
 });
 
+// Endpoint pentru a începe o sesiune de joc (protejat)
+// Returnează un sessionId unic legat de utilizator și timestamp-ul de start.
+app.post('/api/game/start', authenticateToken, (req, res) => {
+    const sessionId = crypto.randomBytes(32).toString('hex');
+    gameSessions.set(sessionId, {
+        userId: req.user.id,
+        startTime: Date.now(),
+        used: false,
+    });
+    res.json({ sessionId });
+});
+
 // Endpoint pentru a trimite un scor nou (protejat)
 app.post('/api/scores', authenticateToken, async (req, res) => {
     try {
-        const { score } = req.body;
+        const { score, sessionId } = req.body;
         const userId = req.user.id;
 
         if (typeof score !== 'number' || !Number.isInteger(score) || score < 0 || score > MAX_SCORE) {
             return res.status(400).json({ message: 'Invalid score.' });
         }
+
+        // ── Session validation ────────────────────────────────────────────────
+        if (sessionId) {
+            const session = gameSessions.get(sessionId);
+
+            if (!session) {
+                // Session missing — server may have restarted mid-game; log and continue.
+                console.warn(`[SCORE] Session not found for user ${userId}, score ${score}. Possible restart.`);
+            } else {
+                if (session.used) {
+                    return res.status(400).json({ message: 'Game session already used.' });
+                }
+                if (session.userId !== userId) {
+                    return res.status(403).json({ message: 'Session does not belong to this user.' });
+                }
+
+                const elapsedSeconds = (Date.now() - session.startTime) / 1000;
+                const minRequired = score * MIN_SECONDS_PER_POINT;
+
+                if (score > 0 && elapsedSeconds < minRequired) {
+                    return res.status(400).json({ message: 'Score not achievable in the given time.' });
+                }
+
+                session.used = true; // one-time use
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         // Obține scorul curent
         const [rows] = await pool.query('SELECT best_score FROM users WHERE id = ?', [userId]);
