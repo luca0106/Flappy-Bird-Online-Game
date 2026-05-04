@@ -887,48 +887,152 @@ body {
 }
 
 
-/* ===== RESPONSIVE DESIGN ===== */
-@media (max-width: 900px) {
-    .top-right-container {
-        position: static;
-        width: 100%;
-        max-width: 420px;
-        margin: 30px auto 0;
-        order: 1; /* Move it before the start button on mobile */
-    }
-    .start-content {
-        display: flex;
-        flex-direction: column;
-    }
-    .start-button {
-        order: 2;
-    }
-    .skin-selector-container {
-        order: 3;
-    }
-    .leaderboard-container {
-        order: 4;
-    }
-    .controls-info {
-        order: 5;
-    }
-}
 
-/* ===== MOBILE PAUSE BUTTON ===== */
+/* ===== MOBILE PAUSE BUTTON (hidden on desktop) ===== */
 .mobile-pause-btn {
     display: none;
 }
 
-/* ===== TOUCH DEVICE OPTIMIZATIONS (pointer: coarse = touchscreen) ===== */
+/* Controls/pause text: mobile variants hidden on desktop */
+.controls-mobile  { display: none; }
+.pause-hint-mobile { display: none; }
+
+/* ===== TOUCH DEVICE LAYOUT (pointer: coarse = touchscreen) ===== */
 @media (pointer: coarse) {
 
-    /* Prevent text selection on long tap */
+    /* ---------- Global ---------- */
     body {
         -webkit-user-select: none;
         user-select: none;
+        align-items: flex-start; /* allow internal scroll */
     }
 
-    /* Mobile pause button */
+    .main-container {
+        padding: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        align-items: flex-start;
+        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ---------- Start screen: single vertical column ---------- */
+    .start-screen {
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        height: auto;
+        min-height: 100vh;
+        min-height: 100svh;
+        padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+        gap: 14px;
+        position: static; /* remove relative so absolute children don't anchor here */
+    }
+
+    /* Auth/profile panel — pull out of absolute, flow at the top */
+    .stats-container {
+        position: static;
+        width: 100%;
+        max-width: 440px;
+        order: 1;
+    }
+
+    .stat-box,
+    .user-profile {
+        padding: 16px 20px;
+        gap: 10px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .stat-value {
+        font-size: 1.6em;
+    }
+
+    .user-profile #welcomeMessage {
+        font-size: 1em;
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Main card */
+    .start-content {
+        order: 2;
+        width: 100%;
+        max-width: 440px;
+        padding: 24px 18px;
+        border-radius: 22px;
+    }
+
+    .logo-container {
+        margin-bottom: 12px;
+    }
+
+    .logo-bird {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 14px;
+    }
+
+    .game-title {
+        font-size: 2.4em;
+        letter-spacing: 2px;
+        margin-bottom: 6px;
+    }
+
+    .subtitle {
+        font-size: 1em;
+        margin-bottom: 0;
+    }
+
+    .start-button {
+        margin-top: 20px;
+        padding: 16px 44px;
+        font-size: 1em;
+        min-height: 52px;
+    }
+
+    .skin-selector-container {
+        margin-bottom: 16px;
+    }
+
+    .skin-selector {
+        gap: 10px;
+    }
+
+    .skin-option {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Leaderboard — pull out of absolute, flow at the bottom */
+    .leaderboard-container {
+        position: static;
+        width: 100%;
+        max-width: 440px;
+        order: 3;
+        margin: 0;
+    }
+
+    .leaderboard-list {
+        max-height: 220px;
+    }
+
+    /* Controls info */
+    .controls-desktop { display: none; }
+    .controls-mobile  { display: block; }
+
+    /* ---------- In-game: safe areas + pause button ---------- */
+    .game-screen {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .game-hud {
+        top: max(16px, env(safe-area-inset-top));
+        left: max(16px, env(safe-area-inset-left));
+    }
+
     .mobile-pause-btn {
         display: flex;
         align-items: center;
@@ -955,33 +1059,20 @@ body {
         transform: scale(0.92);
     }
 
-    /* Safe area insets for notch/home indicator (iPhone etc.) */
-    .game-hud {
-        top: max(20px, env(safe-area-inset-top));
-        left: max(20px, env(safe-area-inset-left));
+    /* Push menu button left so it doesn't overlap the pause button */
+    .menu-button {
+        top: max(15px, env(safe-area-inset-top));
+        right: max(75px, calc(env(safe-area-inset-right) + 75px));
     }
 
-    .game-screen {
-        padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    /* Controls info: hide desktop hint, show mobile hint */
-    .controls-desktop { display: none; }
-    .controls-mobile  { display: block; }
-
-    /* Pause overlay: hide desktop hint, show mobile hint */
+    /* Pause overlay text */
     .pause-hint-desktop { display: none; }
     .pause-hint-mobile  { display: block; }
 
-    /* Larger tap targets for modal buttons */
+    /* Larger tap targets for all interactive buttons */
     .restart-button,
     .menu-back-button,
-    .auth-button,
-    .start-button {
+    .auth-button {
         min-height: 48px;
     }
 }
-
-/* Controls info: hide mobile hint on desktop */
-.controls-mobile { display: none; }
-.pause-hint-mobile { display: none; }
