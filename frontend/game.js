@@ -11,6 +11,7 @@ const BIRD_SIZE = 30;
 // Canvas Setup
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const isMobile = window.matchMedia('(pointer: coarse)').matches;
 
 // Responsive canvas sizing
 function resizeCanvas() {
@@ -29,6 +30,10 @@ function resizeCanvas() {
 
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+
+if (isMobile) {
+    canvas.style.touchAction = 'none';
+}
 
 // ===== AUDIO CONTROLLER =====
 const audioController = {
@@ -628,6 +633,7 @@ function goToMenu() {
 }
 
 function showGameOver() {
+    if (isMobile && navigator.vibrate) navigator.vibrate([60, 40, 60]);
     gameOverModal.style.display = 'flex';
     finalScoreDisplay.textContent = gameState.score;
     // If logged in, submit score to backend. Otherwise, use local best score.
@@ -858,6 +864,34 @@ canvas.addEventListener('click', () => {
         restart();
     }
 });
+
+if (isMobile) {
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        audioController.init();
+        if (gameState.gameActive && !gameState.gameOver && !gameState.paused) {
+            bird.jump();
+            if (navigator.vibrate) navigator.vibrate(15);
+        } else if (gameState.gameActive && gameState.gameOver) {
+            restart();
+        } else if (gameState.gameActive && gameState.paused) {
+            togglePause();
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    const pauseButton = document.getElementById('pauseButton');
+    if (pauseButton) {
+        pauseButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (gameState.gameActive && !gameState.gameOver && !gameState.countingDown) {
+                togglePause();
+            }
+        }, { passive: false });
+    }
+}
 
 // ===== UPDATE GAME LOGIC =====
 function update() {

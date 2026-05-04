@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
     <title>Flappy Bird 2026 - Modern Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -57,7 +57,8 @@
                 </div>
                 
                 <div class="controls-info">
-                    <p><strong>Controls:</strong> SPACE or CLICK to jump | <strong>P:</strong> Pause</p>
+                    <p class="controls-desktop"><strong>Controls:</strong> SPACE or CLICK to jump | <strong>P:</strong> Pause</p>
+                    <p class="controls-mobile"><strong>TAP</strong> to flap | ⏸ button to pause</p>
                 </div>
             </div>
         </div>
@@ -83,10 +84,12 @@
             <div class="pause-overlay" id="pauseOverlay" style="display: none;">
                 <div class="pause-content">
                     <h2>PAUSED</h2>
-                    <p>Press 'P' to resume</p>
+                    <p class="pause-hint-desktop">Press 'P' to resume</p>
+                    <p class="pause-hint-mobile">Tap to resume</p>
                 </div>
             </div>
 
+            <button class="mobile-pause-btn" id="pauseButton">⏸</button>
             <button class="menu-button" id="menuButton">≡</button>
             
             <!-- Game Over Modal -->

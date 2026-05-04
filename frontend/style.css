@@ -913,3 +913,75 @@ body {
         order: 5;
     }
 }
+
+/* ===== MOBILE PAUSE BUTTON ===== */
+.mobile-pause-btn {
+    display: none;
+}
+
+/* ===== TOUCH DEVICE OPTIMIZATIONS (pointer: coarse = touchscreen) ===== */
+@media (pointer: coarse) {
+
+    /* Prevent text selection on long tap */
+    body {
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    /* Mobile pause button */
+    .mobile-pause-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: max(15px, env(safe-area-inset-top));
+        right: max(15px, env(safe-area-inset-right));
+        z-index: 20;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        font-size: 1.3em;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+
+    .mobile-pause-btn:active {
+        background: rgba(255, 255, 255, 0.15);
+        transform: scale(0.92);
+    }
+
+    /* Safe area insets for notch/home indicator (iPhone etc.) */
+    .game-hud {
+        top: max(20px, env(safe-area-inset-top));
+        left: max(20px, env(safe-area-inset-left));
+    }
+
+    .game-screen {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Controls info: hide desktop hint, show mobile hint */
+    .controls-desktop { display: none; }
+    .controls-mobile  { display: block; }
+
+    /* Pause overlay: hide desktop hint, show mobile hint */
+    .pause-hint-desktop { display: none; }
+    .pause-hint-mobile  { display: block; }
+
+    /* Larger tap targets for modal buttons */
+    .restart-button,
+    .menu-back-button,
+    .auth-button,
+    .start-button {
+        min-height: 48px;
+    }
+}
+
+/* Controls info: hide mobile hint on desktop */
+.controls-mobile { display: none; }
+.pause-hint-mobile { display: none; }
