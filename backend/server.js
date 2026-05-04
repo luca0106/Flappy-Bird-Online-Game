@@ -32,11 +32,13 @@ const authLimiter = rateLimit({
 
 const codeLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 ora
-    max: 20, // max 20 emailuri per IP pe ora
+    max: 5, // max 5 emailuri per IP pe ora
     message: { message: 'Too many verification code requests. Please try again in an hour.' },
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Configurația pentru conexiunea la baza de date
 const dbConfig = {
@@ -119,15 +121,15 @@ const authenticateToken = (req, res, next) => {
 // Endpoint pentru a cere un cod de verificare pe email
 app.post('/api/auth/request-code', codeLimiter, async (req, res) => {
     const { email } = req.body;
-    if (!email) {
-        return res.status(400).json({ message: 'Email is required.' });
+    if (!email || !EMAIL_REGEX.test(email)) {
+        return res.status(400).json({ message: 'A valid email is required.' });
     }
 
     try {
-        // Verifică dacă email-ul este deja înregistrat
+        // Verifică dacă email-ul este deja înregistrat (răspuns generic pentru a preveni enumerarea)
         const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
         if (users.length > 0) {
-            return res.status(409).json({ message: 'An account with this email already exists.' });
+            return res.status(200).json({ message: 'Verification code sent successfully.' });
         }
 
         const code = crypto.randomInt(100000, 1000000).toString(); // Generează un cod de 6 cifre
@@ -252,6 +254,10 @@ app.post('/api/scores', authenticateToken, async (req, res) => {
     try {
         const { score } = req.body;
         const userId = req.user.id;
+
+        if (typeof score !== 'number' || !Number.isInteger(score) || score < 0 || score > 10000) {
+            return res.status(400).json({ message: 'Invalid score.' });
+        }
 
         // Obține scorul curent
         const [rows] = await pool.query('SELECT best_score FROM users WHERE id = ?', [userId]);
