@@ -527,7 +527,6 @@ const guestView = document.getElementById('guestView');
 const welcomeMessage = document.getElementById('welcomeMessage');
 const logoutButton = document.getElementById('logoutButton');
 const loginPageButton = document.getElementById('loginPageButton');
-const localBestScoreDisplay = document.getElementById('localBestScore');
 const leaderboardList = document.getElementById('leaderboardList');
 
 let countdownInterval;
@@ -798,9 +797,6 @@ function updateScoreDisplay() {
     if (currentUser) {
         // Update score in the logged-in user profile
         bestScoreDisplay.textContent = currentBest;
-    } else {
-        // Update score in the guest view (local best)
-        localBestScoreDisplay.textContent = currentBest;
     }
 }
 
