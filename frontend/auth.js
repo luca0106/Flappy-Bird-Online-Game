@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const registerStep2 = document.getElementById('registerStep2');
     const sentToEmailDisplay = document.getElementById('sentToEmail');
 
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     function resetRegisterFlow() {
         registerForm.reset();
         registerStep1.style.display = 'block';
@@ -76,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function requestVerificationCode() {
         const email = document.getElementById('registerEmail').value;
-        if (!email) {
+        if (!email || !EMAIL_REGEX.test(email)) {
             alert('Please enter a valid email address.');
             return;
         }

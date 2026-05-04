@@ -16,9 +16,10 @@ const app = express();
 app.use(helmet());
 
 // Middleware-uri
-app.use(cors({
-    origin: ['https://flappy-bird-online-game.vercel.app', 'http://localhost:5500', 'http://127.0.0.1:5500'],
-}));
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : ['https://flappy-bird-online-game.vercel.app', 'http://localhost:5500', 'http://127.0.0.1:5500'];
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // Rate limiting
@@ -38,7 +39,18 @@ const codeLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+const leaderboardLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: { message: 'Too many requests. Please slow down.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_SCORE = 10000;
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
+const JWT_EXPIRY = process.env.JWT_EXPIRY || '1d';
 
 // Configurația pentru conexiunea la baza de date
 const dbConfig = {
@@ -78,6 +90,7 @@ async function ensureDatabaseSchema() {
 async function sendEmail(to, subject, html) {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
+        signal: AbortSignal.timeout(10000),
         headers: {
             'api-key': process.env.BREVO_API_KEY,
             'content-type': 'application/json',
@@ -173,6 +186,14 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             return res.status(400).json({ message: 'Username must be between 3 and 50 characters.' });
         }
 
+        if (!EMAIL_REGEX.test(email)) {
+            return res.status(400).json({ message: 'A valid email is required.' });
+        }
+
+        if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+            return res.status(400).json({ message: 'Username can only contain letters, numbers, _ and -.' });
+        }
+
         // Verifică codul
         const [rows] = await pool.query('SELECT * FROM email_verification WHERE email = ?', [email]);
         const verificationData = rows[0];
@@ -182,18 +203,26 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
         }
 
         // Dacă codul este valid, continuă cu înregistrarea
-        const salt = await bcrypt.genSalt(10);
+        const salt = await bcrypt.genSalt(BCRYPT_ROUNDS);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        const [result] = await pool.query(
-            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-            [username, email, passwordHash]
-        );
-
-        // Șterge codul de verificare după utilizare
-        await pool.query('DELETE FROM email_verification WHERE email = ?', [email]);
-
-        res.status(201).json({ message: 'User registered successfully!', userId: result.insertId });
+        const conn = await pool.getConnection();
+        await conn.beginTransaction();
+        try {
+            const [result] = await conn.query(
+                'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+                [username, email, passwordHash]
+            );
+            // Delete verification code atomically with the user insert
+            await conn.query('DELETE FROM email_verification WHERE email = ?', [email]);
+            await conn.commit();
+            res.status(201).json({ message: 'User registered successfully!', userId: result.insertId });
+        } catch (txError) {
+            await conn.rollback();
+            throw txError;
+        } finally {
+            conn.release();
+        }
 
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
@@ -209,6 +238,10 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email and password are required.' });
+        }
+
         const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
         const user = rows[0];
 
@@ -223,7 +256,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
         // Crearea token-ului JWT
         const payload = { id: user.id }; // Trimitem doar ID-ul, este suficient pentru a identifica utilizatorul.
-        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' }); // Token valabil 1 zi
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRY });
 
         res.json({ token });
 
@@ -245,6 +278,7 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
         }
         res.json(rows[0]);
     } catch (error) {
+        console.error('User fetch error:', error);
         res.status(500).json({ message: 'Server error.' });
     }
 });
@@ -255,17 +289,21 @@ app.post('/api/scores', authenticateToken, async (req, res) => {
         const { score } = req.body;
         const userId = req.user.id;
 
-        if (typeof score !== 'number' || !Number.isInteger(score) || score < 0 || score > 10000) {
+        if (typeof score !== 'number' || !Number.isInteger(score) || score < 0 || score > MAX_SCORE) {
             return res.status(400).json({ message: 'Invalid score.' });
         }
 
         // Obține scorul curent
         const [rows] = await pool.query('SELECT best_score FROM users WHERE id = ?', [userId]);
+        if (!rows[0]) return res.status(404).json({ message: 'User not found.' });
         const currentBest = rows[0].best_score;
 
         if (score > currentBest) {
-            // Actualizează scorul dacă este mai mare
-            await pool.query('UPDATE users SET best_score = ? WHERE id = ?', [score, userId]);
+            // Atomic update — only writes if best_score hasn't been raised by a concurrent request
+            await pool.query(
+                'UPDATE users SET best_score = ? WHERE id = ? AND best_score < ?',
+                [score, userId, score]
+            );
             res.json({ message: 'New best score saved!', newBestScore: score });
         } else {
             res.json({ message: 'Score not higher than best.', newBestScore: currentBest });
@@ -277,7 +315,7 @@ app.post('/api/scores', authenticateToken, async (req, res) => {
 });
 
 // Endpoint pentru a obține clasamentul global (leaderboard)
-app.get('/api/leaderboard', async (req, res) => {
+app.get('/api/leaderboard', leaderboardLimiter, async (req, res) => {
     try {
         const [rows] = await pool.query(
             'SELECT username, best_score FROM users ORDER BY best_score DESC LIMIT 10'
@@ -293,16 +331,19 @@ app.get('/api/leaderboard', async (req, res) => {
 // --- Pornirea Serverului ---
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, async () => {
+async function main() {
     try {
         await ensureDatabaseSchema();
-        // Testează conexiunea la baza de date la pornire
         const connection = await pool.getConnection();
         console.log('Successfully connected to the database.');
-        connection.release(); // Eliberează conexiunea
-        console.log(`Backend server is running on http://localhost:${PORT}`);
+        connection.release();
+        app.listen(PORT, () => {
+            console.log(`Backend server is running on http://localhost:${PORT}`);
+        });
     } catch (error) {
         console.error('Failed to connect to the database:', error);
-        process.exit(1); // Oprește aplicația dacă nu se poate conecta la DB
+        process.exit(1);
     }
-});
+}
+
+main();

@@ -684,18 +684,29 @@ async function fetchUserData() {
         const response = await fetch(`${API_URL}/user/me`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        if (!response.ok) {
-            // Dacă serverul returnează 401 sau 403, token-ul este invalid
-            throw new Error('Session invalid.');
+
+        if (response.status === 401 || response.status === 403) {
+            // Token is genuinely invalid or expired — clear it
+            handleLogout();
+            return;
         }
-        
+
+        if (!response.ok) {
+            // Server error or network issue — keep the token, fall back to guest view
+            throw new Error('Server error.');
+        }
+
         const user = await response.json();
         currentUser = user;
         gameState.bestScore = user.bestScore ?? user.best_score ?? 0;
         updateUIAfterLogin();
     } catch (error) {
-        console.error('Session expired or invalid.', error);
-        handleLogout();
+        // Network failure (offline, timeout, etc.) — don't erase the token
+        console.error('Could not reach server.', error);
+        guestView.style.display = 'flex';
+        userProfile.style.display = 'none';
+        gameState.bestScore = parseInt(localStorage.getItem('flappyBirdBestScore')) || 0;
+        updateScoreDisplay();
     }
 }
 
@@ -756,7 +767,7 @@ async function submitScore(score) {
             body: JSON.stringify({ score })
         });
         const data = await response.json();
-        if (response.ok && data.newBestScore) {
+        if (response.ok && data.newBestScore !== undefined) {
             gameState.bestScore = data.newBestScore;
             updateScoreDisplay();
         }
@@ -884,7 +895,7 @@ function update() {
 
     // Update pipes
     gameState.pipes = gameState.pipes.filter(pipe => !pipe.isOffScreen());
-    gameState.pipes.forEach(pipe => {
+    for (const pipe of gameState.pipes) {
         pipe.update();
 
         // Check collision
@@ -894,7 +905,7 @@ function update() {
             audioController.playCrashSound();
             triggerShake(15, 20);
             showGameOver();
-            return;
+            break; // stop processing — prevents score incrementing or double showGameOver
         }
 
         // Check score
@@ -904,7 +915,7 @@ function update() {
             audioController.playScoreSound();
             if (currentScoreDisplay) currentScoreDisplay.textContent = gameState.score;
         }
-    });
+    }
 
     // Update ground offset for scrolling effect
     const baseSpeed = 4.75;
