@@ -1167,3 +1167,16 @@ async function initializeApp() {
 
 // Rulează aplicația
 initializeApp();
+
+// ===== FULLSCREEN (F11 → Fullscreen API, ESC iese automat) =====
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F11') {
+        e.preventDefault();
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else {
+            document.documentElement.requestFullscreen();
+        }
+    }
+});
+
