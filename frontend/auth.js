@@ -109,6 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function completeRegistration(event) {
         event.preventDefault();
+        if (registerStep2.style.display === 'none') {
+            requestVerificationCode();
+            return;
+        }
         const email = document.getElementById('registerEmail').value;
         const verificationCode = document.getElementById('verificationCode').value;
         const username = document.getElementById('registerUsername').value;
@@ -133,5 +137,33 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.addEventListener('submit', handleLogin);
     sendCodeBtn.addEventListener('click', requestVerificationCode);
     registerForm.addEventListener('submit', completeRegistration);
+
+    // Animate login button on Enter
+    loginForm.querySelectorAll('input').forEach(input => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') simulateButtonPress(document.getElementById('loginSubmit'));
+        });
+    });
+
+    // Animate register submit button on Enter (Step 2)
+    [document.getElementById('verificationCode'), document.getElementById('registerUsername'), document.getElementById('registerPassword')].forEach(input => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') simulateButtonPress(document.getElementById('registerSubmit'));
+        });
+    });
+
+    function simulateButtonPress(btn) {
+        btn.classList.add('btn-pressed');
+        setTimeout(() => btn.classList.remove('btn-pressed'), 150);
+        btn.click();
+    }
+
+    // Allow Enter key to trigger "Send Code" when on Step 1
+    document.getElementById('registerEmail').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            simulateButtonPress(sendCodeBtn);
+        }
+    });
 });
 

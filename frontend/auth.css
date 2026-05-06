@@ -191,6 +191,13 @@ body {
     box-shadow: var(--glow-blue), 0 5px 20px rgba(0, 212, 255, 0.4);
 }
 
+.auth-form button:not(.password-toggle):active,
+.auth-form button:not(.password-toggle).btn-pressed {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+    transition: all 0.08s ease;
+}
+
 .password-wrapper {
     position: relative;
     display: flex;
